@@ -23,7 +23,8 @@ Additional functions added to album art:
   - Play playlist/album (Link needs to be input in settings)
   - Pause/unpause
   - Set volume to given value
-- A pause icon will be superimposed on the art when paused
+- A pause icon will be superimposed on the art when paused.
+
 Other changes:
 - Stopping playback (not pausing) resets info buttons to their default state, rather than showing the last availiable info.
 - Debounce function alleviates the 'flashing' issue, caused by cider toggling pause/unpause multiple times when skipping songs.
