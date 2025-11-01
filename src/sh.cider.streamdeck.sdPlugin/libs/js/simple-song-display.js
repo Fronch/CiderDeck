@@ -676,6 +676,58 @@ class SongDisplayRenderer {
                 return `${basePath}icon.png`;
         }
     }
+	
+	async createPausedArtwork(art64) {
+		canvasLogger.debug("Rendering paused state artwork")
+		const canvas = document.createElement('canvas');
+		const ctx = canvas.getContext('2d');
+		
+		return new Promise((resolve, reject) => {
+        const baseImg = new Image();
+        baseImg.onload = () => {
+            // Use the image's dimensions to ensure a correct canvas size
+            canvas.width = baseImg.width;
+            canvas.height = baseImg.height;
+
+            // 1. Draw the base album art
+            ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+
+            // 2. Apply a light grey tint (rgba(128, 128, 128, 0.4))
+            ctx.fillStyle = 'rgba(128, 128, 128, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			// 3. Draw two solid white pause bars
+            ctx.fillStyle = '#FFFFFF';
+            const barWidth = canvas.width * 0.18; // 15% of width
+            const barHeight = canvas.height * 0.65; // 60% of height
+            const gap = canvas.width * 0.18; // 10% gap
+			const cornerRadius = barWidth * 0.35
+            
+            const totalPauseWidth = (barWidth * 2) + gap;
+            const startX = (canvas.width - totalPauseWidth) / 2;
+            const startY = (canvas.height - barHeight) / 2;
+			
+			// Draw left bar
+			ctx.beginPath();
+			ctx.roundRect(startX, startY, barWidth, barHeight, cornerRadius);
+			ctx.fill();
+			// Draw right bar
+			ctx.beginPath();
+			ctx.roundRect(startX + barWidth + gap, startY, barWidth, barHeight, cornerRadius);
+			ctx.fill();
+			
+			// 4. Cache the final image
+            const pausedArt64 = canvas.toDataURL('image/png');
+			
+            window.cacheManager?.set('pausedArtwork64', pausedArt64);
+            canvasLogger.debug("Paused artwork created and cached.");
+            
+            resolve();
+        };
+        baseImg.onerror = reject;
+        baseImg.src = art64;
+    });
+	}
 }
 
 // Create global instance

@@ -276,6 +276,7 @@ class ELGSDApi extends ELGSDPlugin {
      * @param {object} payload
      */
     setGlobalSettings(payload) {
+		console.warn("global settings set", payload);
         this.send(this.uuid, Events.setGlobalSettings, {
             payload: payload,
         });
@@ -341,7 +342,7 @@ class ELGSDApi extends ELGSDPlugin {
     onDidReceiveSettings(action, fn) {
         if(!fn) {
             console.error(
-                'A callback function for the didReceiveSettings event is required for onDidReceiveSettings.'
+                'A callback function for the didReceiveSettings event is required for onDidReceiveSettings.', fn
             );
         }
 

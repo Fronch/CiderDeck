@@ -15,6 +15,7 @@
 /// <reference path="libs/js/library.js" />
 /// <reference path="libs/js/volume.js" />
 /// <reference path="libs/js/song-display.js" />
+/// <reference path="libs/js/art-button.js" />
 
 // ==========================================================================
 //  Global State
@@ -87,7 +88,6 @@ $SD.onConnected(() => {
         console.debug('[DEBUG] [SongDisplay] Initializing song display renderer');
         window.songDisplayRenderer = new SongDisplayRenderer();
     }
-    
     CiderDeckPlayback.setDefaults();
     $SD.getGlobalSettings();
 });
@@ -105,7 +105,7 @@ Object.keys(actions).forEach(actionKey => {
     action.onWillAppear(({ context, payload }) => {
         if (!window.contexts[actionKey].includes(context)) {
             window.contexts[actionKey].push(context);
-            console.debug(`[DEBUG] [Context] Context added for ${actionKey}: ${context}`);
+            console.debug(`[DEBUG] [Context] Context added for ${actionKey}: ${context}`, payload, window.contexts, context);
         }
         
         // Handle song display settings if this is a song name action
@@ -142,6 +142,14 @@ Object.keys(actions).forEach(actionKey => {
                 }
             });
         }
+		if (actionKey === 'albumArtAction') {
+			// Initialize the song renderer if it hasn't been yet
+			if (!window.songDisplayRenderer) {
+				console.debug('[DEBUG] [SongDisplay] Initializing song display renderer on first appearance');
+				window.songDisplayRenderer = new SongDisplayRenderer();
+			}
+
+		}
     });
 
     action.onWillDisappear(({ context }) => {
@@ -204,6 +212,11 @@ Object.keys(actions).forEach(actionKey => {
             case 'ciderLogoAction':
                 console.warn(`[DEBUG] [Action] Interesting decision?`);
                 break;
+			case 'albumArtAction':
+				if (currentAppState === 'ready') {
+					CiderDeckArtButton.artClicked();
+				}
+				break;
             default:
                 console.warn(`[DEBUG] [Action] No handler for ${actionKey}`);
                 break;
@@ -320,7 +333,15 @@ const defaultSettings = {
             speed: 40,
             pause: 2000
         }
-    }
+	},
+	artDisplay: {
+		artAction: "pause",
+		startPlaybackArt: false,
+		albumUrl: '',
+		shuffleToggle: false,
+		setVolumeArt: false,
+		artVolumeVal: 0.5
+	}
 };
 
 function updateSettings(settings) {
@@ -595,10 +616,24 @@ function handlePlaybackEvent({ data, type }) {
         case "playbackStatus.nowPlayingItemDidChange":
             CiderDeckPlayback.setManualData(data);
             CiderDeckPlayback.updatePlaybackModes();
+			setTimeout(() => {
+				CiderDeckPlayback.toggleArtwork(data.state === 'playing' ? 0 : 1 );
+			}, 300);
             break;
         case "playbackStatus.playbackStateDidChange":
             CiderDeckPlayback.setPlaybackStatus(data);
-            if (data) CiderDeckPlayback.setData(data);
+            if (data && data.state != 'seeking') {
+				CiderDeckPlayback.setData(data);
+				if(data.state == 'stopped') {
+					setTimeout(() => {
+						//reset info buttons to default state
+						console.info("Playing stopped, resetting button states");	
+						data.attributes = {};
+						CiderDeckPlayback.setData(data);
+						resetStates();
+					}, 200);
+				}
+			}
             break;
         case "playbackStatus.playbackTimeDidChange":
             CiderDeckPlayback.setPlaybackStatus(data.isPlaying);
@@ -675,7 +710,7 @@ function setOfflineStates() {
 
         if (actionKey === 'ciderPlaybackAction') {
             const feedbackPayload = {
-                "icon1": "actions/assets/buttons/media-playlist",
+                "icon1": "actions/assets/buttons/icon",
                 "icon2": "actions/assets/buttons/volume-off",
                 "indicator1": 0,
                 "indicator2": 0,
@@ -703,12 +738,12 @@ function resetStates() {
             }
 
             if (actionKey === 'albumArtAction') {
-                $SD.setImage(context, "actions/assets/buttons/icon", 0);
+                $SD.setImage(context, "actions/assets/buttons/media-playlist", 0);
             }
 
             if (actionKey === 'ciderPlaybackAction') {
                 const feedbackPayload = {
-                    "icon1": "actions/assets/buttons/media-playlist",
+                    "icon1": "actions/assets/buttons/icon",
                     "icon2": "actions/assets/buttons/volume-off",
                     "title": "Cider - N/A",
                 };

@@ -78,12 +78,12 @@
 			"Encoder": {
 				"layout": "$B1",
 				"TriggerDescription": {
-					"Touch": "Nothing happens when you press this button."
+					"Touch": "Multiple Customisable button actions"
 				}
 			},
 			"States": [
 				{
-					"Image": "actions/assets/buttons/icon"
+					"Image": "actions/assets/buttons/media-playlist"
 				},
 				{
 					"Image": "actions/assets/buttons/offline/icon"
@@ -91,7 +91,7 @@
 			],
 			"Tooltip": "Provides a tile to show the currently playing song's Album Art from Cider.",
 			"UUID": "sh.cider.streamdeck.albumart",
-			"PropertyInspectorPath": "actions/inspectors/inspector.html"
+			"PropertyInspectorPath": "actions/inspectors/album-art-inspector.html"
 		},
 		{
 			"Icon": "actions/assets/app/media-play-pause-toggle",

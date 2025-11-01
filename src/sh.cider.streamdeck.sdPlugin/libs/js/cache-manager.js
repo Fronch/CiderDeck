@@ -17,7 +17,9 @@ class CacheManager {
             addedToLibrary: null,
             rating: null,
             currentPlaybackTime: null,
-            songDisplaySettings: null
+            songDisplaySettings: null,
+			artwork64: null,
+			pausedArtwork64: null
         };
     }
 

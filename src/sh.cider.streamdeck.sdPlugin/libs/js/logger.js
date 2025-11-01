@@ -49,6 +49,10 @@ const LOG_STYLES = {
     Artwork: {
         color: '#f5a742',
         emoji: '🖼️'
+	},
+	ArtDisplay: {
+        color: '#f5a742',
+        emoji: '🖼️'
     },
     SongDisplay: {
         color: '#da42f5',

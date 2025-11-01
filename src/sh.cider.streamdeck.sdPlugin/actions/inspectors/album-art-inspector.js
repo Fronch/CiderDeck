@@ -9,12 +9,9 @@ let tempSettings = {};
 // Initialize UI event listeners for controls
 initUI();
 
-// Set initial color previews
-updateColorPreviews();
-
 // Initialize the base inspector with our settings
 baseInspector.initialize({
-    actionType: 'songDisplay',
+    actionType: 'artDisplay',
     onActionSettingsReceived: handleSettingsUpdate,
     onGlobalSettingsReceived: handleGlobalSettingsUpdate,
     addGlobalSettingsTab: true
@@ -44,10 +41,8 @@ function handleSettingsUpdate(settings) {
     
     // Load the settings into the UI
     loadSettingsToUI(tempSettings);
-    
-    // Update UI with received settings
-    updateColorPreviews();
-    updateDependentControls();
+	// Update UI
+	updateDependentControls();
 }
 
 /**
@@ -56,12 +51,12 @@ function handleSettingsUpdate(settings) {
  * @param {Object} globalSettings - The global settings object from Stream Deck
  */
 function handleGlobalSettingsUpdate(globalSettings) {
-    console.log('Global settings updated:', globalSettings);
+    console.log('ART Global settings updated: ', globalSettings);
     
-    // If we have songDisplay settings in the global object, update our UI
-    if (globalSettings.songDisplay) {
-        // Synchronize the action settings with global songDisplay settings
-        baseInspector.actionSettings = {...baseInspector.actionSettings, ...globalSettings.songDisplay};
+    // If we have artDisplay settings in the global object, update our UI
+    if (globalSettings.artDisplay) {
+        // Synchronize the action settings with global artDisplay settings
+        baseInspector.actionSettings = {...baseInspector.actionSettings, ...globalSettings.artDisplay};
         
         // Update our temporary settings to keep them in sync
         tempSettings = JSON.parse(JSON.stringify(baseInspector.actionSettings));
@@ -70,7 +65,6 @@ function handleGlobalSettingsUpdate(globalSettings) {
         loadSettingsToUI(tempSettings);
         
         // Update UI
-        updateColorPreviews();
         updateDependentControls();
     }
 }
@@ -80,27 +74,6 @@ function handleGlobalSettingsUpdate(globalSettings) {
  * Sets up all event handlers for the property inspector UI
  */
 function initUI() {
-    // Update color previews when color inputs change
-    document.getElementById('textColor').addEventListener('input', updateColorPreviews);
-    document.getElementById('backgroundColor').addEventListener('input', updateColorPreviews);
-
-    // Enable/disable icon size input based on showIcons checkbox
-    document.getElementById('showIcons').addEventListener('change', function() {
-        document.getElementById('iconSize').disabled = !this.checked;
-        document.querySelectorAll('#icon-size-container .clickable').forEach(el => {
-            el.style.opacity = this.checked ? 1 : 0.5;
-        });
-    });
-    
-    // Enable/disable marquee controls based on marqueeEnabled checkbox
-    document.getElementById('marqueeEnabled').addEventListener('change', function() {
-        document.getElementById('marqueeSpeed').disabled = !this.checked;
-        document.getElementById('marqueePause').disabled = !this.checked;
-        document.querySelectorAll('#marquee-speed-container .clickable, #marquee-pause-container .clickable').forEach(el => {
-            el.style.opacity = this.checked ? 1 : 0.5;
-        });
-    });
-
     // Save button: Apply temporary settings to actual settings and save to Stream Deck
     document.getElementById('save-settings').addEventListener('click', (event) => {
         event.preventDefault();
@@ -109,13 +82,14 @@ function initUI() {
         collectFormValues();
         
         // Apply temp settings to actual settings
+		console.log(tempSettings)
         baseInspector.actionSettings = JSON.parse(JSON.stringify(tempSettings));
         
         // Sync with global settings
         baseInspector.syncActionToGlobalSettings();
         
         // Send the settings to Stream Deck
-        baseInspector.sendSettings();
+        //baseInspector.sendSettings();
         
         // Show a success message
         const button = document.getElementById('save-settings');
@@ -128,15 +102,15 @@ function initUI() {
 
     // Reset button: Restore default settings
     document.getElementById('reset-settings').addEventListener('click', (event) => {
+		console.log("resetting")
         event.preventDefault();
-        // Get default song display settings from the base inspector
-        const defaultSettings = baseInspector.globalSettings.songDisplay;
+        // Get default art display settings from the base inspector
+        const defaultSettings = baseInspector.globalSettings.artDisplay;
         // Reset temp settings to defaults
         tempSettings = JSON.parse(JSON.stringify(defaultSettings));
         // Load default settings into the UI
         loadSettingsToUI(tempSettings);
         // Update UI
-        updateColorPreviews();
         updateDependentControls();
     });
 
@@ -187,7 +161,6 @@ function setupFunctionalTabSwitching() {
             
             // Update dependent controls and refresh previews
             updateDependentControls();
-            updateColorPreviews();
         });
     });
 }
@@ -197,18 +170,18 @@ function setupFunctionalTabSwitching() {
  * This captures the current state of all form elements with data-setting attributes
  */
 function collectFormValues() {
-    // Get all form elements with data-setting attributes
+    //Get all form elements with data-setting attributes
     document.querySelectorAll('[data-setting]').forEach(element => {
         const settingName = element.dataset.setting;
         if (!settingName) return;
         
-        // Update the setting in tempSettings based on element type
+        //Update the setting in tempSettings based on element type
         if (element.type === 'checkbox') {
             tempSettings[settingName] = element.checked;
 		} else if (element.id === 'artVolumeVal') {
-				const numValue = Math.max(Math.min(parseFloat(element.value, 10),1),0);
-				tempSettings[settingName] = isNaN(numValue) ? 0.5 : numValue;
-        } else if (element.type === 'range' || element.type === 'number') {
+			const numValue = parseFloat(element.value);
+			tempSettings[settingName] = isNaN(numValue) ? 0.5 : numValue;
+        } else if (element.type === 'range' || element.type == 'number') {
             const numValue = parseInt(element.value, 10);
             tempSettings[settingName] = isNaN(numValue) ? 0 : numValue;
         } else if (element.type === 'color') {
@@ -240,31 +213,9 @@ function loadSettingsToUI(settings) {
 }
 
 /**
- * Update color previews when values change
- * Shows the selected colors in visual preview elements
- */
-function updateColorPreviews() {
-    document.getElementById('textColorPreview').style.backgroundColor = document.getElementById('textColor').value;
-    document.getElementById('bgColorPreview').style.backgroundColor = document.getElementById('backgroundColor').value;
-}
-
-/**
  * Update UI state for dependent elements
  * Enables/disables and adjusts opacity of UI elements based on their parent controls
  */
 function updateDependentControls() {
-    // Update icon size control state
-    const showIcons = document.getElementById('showIcons').checked;
-    document.getElementById('iconSize').disabled = !showIcons;
-    document.querySelectorAll('#icon-size-container .clickable').forEach(el => {
-        el.style.opacity = showIcons ? 1 : 0.5;
-    });
-    
-    // Update marquee controls state
-    const marqueeEnabled = document.getElementById('marqueeEnabled').checked;
-    document.getElementById('marqueeSpeed').disabled = !marqueeEnabled;
-    document.getElementById('marqueePause').disabled = !marqueeEnabled;
-    document.querySelectorAll('#marquee-speed-container .clickable, #marquee-pause-container .clickable').forEach(el => {
-        el.style.opacity = marqueeEnabled ? 1 : 0.5;
-    });
+	//unneeded currently
 }

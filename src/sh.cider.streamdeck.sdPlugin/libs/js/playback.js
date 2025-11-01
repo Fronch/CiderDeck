@@ -32,7 +32,7 @@ const debounce = (func, wait) => {
 };
 
 // Debounced version of the logger.info method (200ms)
-const debouncedPlaybackInfo = debounce(logger.info.bind(logger), 200);
+const debouncedPlaybackInfo = debounce(logger.info.bind(logger), 400);
 
 // Playback state tracking
 let currentRepeatMode = 0; // 0: off, 1: repeat one, 2: repeat all, 3: disabled
@@ -47,7 +47,7 @@ async function setDefaults() {
         window.contexts[actionKey]?.forEach(context => {
             if (actionKey === 'ciderPlaybackAction') {
                 const feedbackPayload = {
-                    "icon1": "actions/assets/buttons/media-playlist",
+                    "icon1": "actions/assets/buttons/icon",
                     "icon2": "actions/assets/buttons/volume-off",
                     "title": "Cider - N/A",
                 };
@@ -96,13 +96,22 @@ async function setAdaptiveData({ inLibrary, inFavorites }) {
     }
 }
 
+const debouncedSetPlaybackStatusLogic = debounce(_setPlaybackStatusLogic, 200);
+/**
+ * Public function to update playback status. 
+ * It calls the debounced logic to prevent rapid updates during skip/next events.
+ * @param {string|number} status - The current playback status
+ */
+async function setPlaybackStatus(status) {
+    // Pass the status argument directly to the debounced function
+    debouncedSetPlaybackStatusLogic(status);
+}
+
 /**
  * Updates display data based on current playback state
  * @param {Object} data - The playback data
  */
 async function setData({ state, attributes }) {
-    setPlaybackStatus(state);
-
     const cacheManager = window.cacheManager;
     if (!cacheManager) {
         logger.error("Cache manager is not available");
@@ -118,8 +127,9 @@ async function setData({ state, attributes }) {
     const songName = attributes.name;
     const artistName = attributes.artistName;
     const albumName = attributes.albumName;
-
-    debouncedPlaybackInfo(`Processing: "${songName}" by ${artistName} from ${albumName}`);
+	
+	debouncedPlaybackInfo(`Processing: "${songName}" by ${artistName} from ${albumName}`);
+		
     logger.debug(`Artwork URL: ${artwork}`);
     
     let logMessage = "[DEBUG] [Playback] ";
@@ -128,16 +138,23 @@ async function setData({ state, attributes }) {
         artworkLogger.debug(`Updating artwork from: ${artwork}`);
         const utils = window.CiderDeckUtils;
         if (utils && utils.getBase64Image) {
-            utils.getBase64Image(artwork).then(art64 => {
+            utils.getBase64Image(artwork).then(async (art64) => {
                 artworkLogger.debug(`Successfully converted artwork to base64`);
+				cacheManager.set('artwork64', art64); // Cache the raw base64 art, for toggling artwork with superimposed pause icon
+				if (window.songDisplayRenderer && window.songDisplayRenderer.createPausedArtwork) {
+					await window.songDisplayRenderer.createPausedArtwork(art64);
+				}
+				setPlaybackStatus(state);
+				/** Replaced with functionality in setPlaybackStatus(state)
                 window.contexts.albumArtAction?.forEach(context => {
                     artworkLogger.debug(`Setting album art for context: ${context}`);
                     if (utils.setImage) {
                         utils.setImage(context, art64, 0);
                     } else {
-                        $SD.setImage(context, art64, 0);
+						$SD.setImage(context, art64, 0);
                     }
                 });
+				*/
                 if (window.contexts.ciderPlaybackAction && window.contexts.ciderPlaybackAction[0]) {
                     // Check if user wants to show artwork on dial or use default Cider logo
                     const showArtworkOnDial = window.ciderDeckSettings?.dial?.showArtworkOnDial ?? true;
@@ -250,6 +267,7 @@ async function setData({ state, attributes }) {
             $SD.setImage(context, `actions/playback/assets/${toggleIcon}`, 0);
         }
     });
+	setPlaybackStatus(state);
     logMessage += `State: ${state === "playing" ? "playing" : "paused"}`;
 
     // Use our colorful logger instead of standard console.debug
@@ -266,9 +284,10 @@ async function setManualData(playbackInfo) {
 
 /**
  * Updates playback status (playing/paused) on Stream Deck buttons
+ * Updates the album art to toggle a pause overlay.
  * @param {string|number} status - The current playback status
  */
-async function setPlaybackStatus(status) {
+async function _setPlaybackStatusLogic(status) {
     // Convert string status to numeric value if needed
     if (typeof status === 'string') {
         status = status === 'playing' ? 1 : 0;
@@ -288,9 +307,54 @@ async function setPlaybackStatus(status) {
             $SD.setState(context, status ? 1 : 0);
         });
         logger.debug(`Updated playback status: ${status ? "playing" : "paused"}`);
+		toggleArtwork(status);
     }
 }
+function toggleArtwork(status){
+	//Album Art Toggle
+	try {
+		const state = status ? 1 : 0
+		// Get the cached base64 images
+		const playingArt = cacheManager.get('artwork64');
+		const pausedArt = cacheManager.get('pausedArtwork64');
+		const utils = window.CiderDeckUtils;
 
+		if (!playingArt || !pausedArt || !utils) {
+			artworkLogger.warn('Cannot toggle art: Missing cached base64 art or utils.', playingArt, pausedArt);
+			return;
+		}
+		let finalArt64;
+		if (state === 0) {
+			artworkLogger.debug('Playback paused, setting composited pause art.');
+			finalArt64 = pausedArt;
+		} else {
+			artworkLogger.debug('Playback resumed, setting original art.');
+			finalArt64 = playingArt;
+		}
+		
+
+		// Send the updated image to all Album Art button contexts
+		window.contexts.albumArtAction?.forEach(context => {
+			artworkLogger.debug(`Setting toggled art for context: ${context}`);
+			if (utils.setImage) {
+				utils.setImage(context, finalArt64, 0);
+			} else {
+				$SD.setImage(context, finalArt64, 0);
+			}
+		});
+
+		// Update the Stream Deck+ Dial if it exists
+		if (window.contexts.ciderPlaybackAction && window.contexts.ciderPlaybackAction[0]) {
+			const showArtworkOnDial = window.ciderDeckSettings?.dial?.showArtworkOnDial ?? true;
+			if (showArtworkOnDial) {
+				$SD.setFeedback(window.contexts.ciderPlaybackAction[0], { "icon1": finalArt64 });
+			}
+		}
+
+	} catch (err) {
+		artworkLogger.error(`Failed to update art on pause/play: ${err}`);
+	}
+}
 /**
  * Updates repeat mode and corresponding button state
  * @param {number} mode - The repeat mode (0: off, 1: repeat one, 2: repeat all, 3: disabled)
@@ -428,7 +492,6 @@ async function setPlaybackTime(time, duration) {
         $SD.setFeedback(window.contexts.ciderPlaybackAction[0], feedbackPayload);
     }
 }
-
 // Export the playback functions
 window.CiderDeckPlayback = {
     setDefaults,
@@ -445,5 +508,6 @@ window.CiderDeckPlayback = {
     getCurrentRepeatMode: () => currentRepeatMode,
     getCurrentShuffleMode: () => currentShuffleMode,
     setCurrentRepeatMode: (mode) => { currentRepeatMode = mode; },
-    setCurrentShuffleMode: (mode) => { currentShuffleMode = mode; }
+    setCurrentShuffleMode: (mode) => { currentShuffleMode = mode; },
+	toggleArtwork
 };

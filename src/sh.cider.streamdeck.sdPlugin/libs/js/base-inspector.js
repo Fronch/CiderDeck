@@ -56,7 +56,15 @@ class BaseInspector {
                     speed: 40,
                     pause: 2000
                 }
-            }
+            },
+			artDisplay: {
+				"albumUrl": '',
+				"shuffleToggle": false,
+				"artAction": "pause",
+				"startPlaybackArt": false,
+				"setVolumeArt": false,
+				"artVolumeVal": 0.5
+			}
         };
 
         // Bind methods to this instance
@@ -86,7 +94,7 @@ class BaseInspector {
 
         // Connect to Stream Deck
         $PI.onConnected((jsn) => {
-            console.log('Inspector connected:', jsn);
+            console.log('Inspector connected:');
             this.actionId = jsn.uuid;
 
             // Register for action-specific settings
@@ -352,7 +360,6 @@ class BaseInspector {
         // Save the updated settings
         this.globalSettings = newSettings;
         $PI.setGlobalSettings(newSettings);
-        console.log('Global settings saved:', newSettings);
         
         // Notify the plugin that global settings have changed
         // This helps with hot reloading when settings change
@@ -412,6 +419,10 @@ class BaseInspector {
             
             if (element.type === 'checkbox') {
                 newSettings[settingName] = element.checked;
+			} else if (element.id === 'artVolumeVal') {
+				const numValue = Math.max(Math.min(parseFloat(element.value, 10),1),0);
+				console.log("Volume set as: ", numValue)
+				newSettings[settingName] = isNaN(numValue) ? 0.5 : numValue;
             } else if (element.type === 'range' || element.type === 'number') {
                 const numValue = parseInt(element.value, 10);
                 newSettings[settingName] = isNaN(numValue) ? 0 : numValue;
@@ -423,11 +434,10 @@ class BaseInspector {
         });
         
         // Update stored settings
-        this.actionSettings = {...this.actionSettings, ...newSettings};
+        this.actionSettings = {...newSettings};
         
         // Save to Stream Deck
         $PI.setSettings(this.actionSettings);
-        console.log('Action settings saved:', this.actionSettings);
 
         // Synchronize with global settings if this is a special action type
         if (this.actionType) {
@@ -480,8 +490,7 @@ class BaseInspector {
      * @returns {Object} - Merged object
      */
     deepMerge(target, source) {
-        const output = {...target};
-        
+        const output = {...target};       
         if (this.isObject(target) && this.isObject(source)) {
             Object.keys(source).forEach(key => {
                 if (this.isObject(source[key])) {
