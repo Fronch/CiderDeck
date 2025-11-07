@@ -18,6 +18,17 @@ Using CiderDeck you can do the following
 - Add to Library
 - and much more to come.
 
+Additional functions added to album art:
+- Clicking can:
+  - Play playlist/album (Link needs to be input in settings)
+  - Pause/unpause
+  - Set volume to given value
+- A pause icon will be superimposed on the art when paused.
+
+Other changes:
+- Stopping playback (not pausing) resets info buttons to their default state, rather than showing the last availiable info.
+- Debounce function alleviates the 'flashing' issue, caused by cider toggling pause/unpause multiple times when skipping songs.
+
 ## Features
 - Written in JavaScript
 - Cross-Platform (macOS, Windows)
