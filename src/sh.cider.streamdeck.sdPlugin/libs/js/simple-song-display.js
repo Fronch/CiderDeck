@@ -685,38 +685,40 @@ class SongDisplayRenderer {
 		return new Promise((resolve, reject) => {
         const baseImg = new Image();
         baseImg.onload = () => {
-            // Use the image's dimensions to ensure a correct canvas size
             canvas.width = baseImg.width;
             canvas.height = baseImg.height;
 
-            // 1. Draw the base album art
             ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
 
-            // 2. Apply a light grey tint (rgba(128, 128, 128, 0.4))
+            // light grey tint
             ctx.fillStyle = 'rgba(128, 128, 128, 0.4)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 			
-			// 3. Draw two solid white pause bars
             ctx.fillStyle = '#FFFFFF';
-            const barWidth = canvas.width * 0.18; // 15% of width
-            const barHeight = canvas.height * 0.65; // 60% of height
-            const gap = canvas.width * 0.18; // 10% gap
-			const cornerRadius = barWidth * 0.35
-            
-            const totalPauseWidth = (barWidth * 2) + gap;
-            const startX = (canvas.width - totalPauseWidth) / 2;
-            const startY = (canvas.height - barHeight) / 2;
-			
-			// Draw left bar
+
+			const triangleHeight = canvas.height * 0.67;
+			const triangleWidth = canvas.width * 0.84;  
+			const R = 45; // Corner radius for roundness 
+
+			const centerX = canvas.width / 2;
+			const centerY = canvas.height / 2;
+
+			// Vertex Top
+			const A = { x: centerX - triangleWidth * 0.25, y: centerY - triangleHeight / 2 };
+			// Vertex Right
+			const B = { x: centerX + triangleWidth * 0.45, y: centerY };
+			// Vertex Bottom
+			const C = { x: centerX - triangleWidth * 0.25, y: centerY + triangleHeight / 2 };
+
 			ctx.beginPath();
-			ctx.roundRect(startX, startY, barWidth, barHeight, cornerRadius);
-			ctx.fill();
-			// Draw right bar
-			ctx.beginPath();
-			ctx.roundRect(startX + barWidth + gap, startY, barWidth, barHeight, cornerRadius);
-			ctx.fill();
+			ctx.moveTo(A.x, A.y + R); //start past the first corner to avoid sharp edge
 			
-			// 4. Cache the final image
+			ctx.arcTo(A.x, A.y, B.x - R, B.y, R);
+			ctx.arcTo(B.x, B.y, C.x, C.y - R, R);
+			ctx.arcTo(C.x, C.y, A.x, A.y + R, R);
+			
+			ctx.closePath();
+			ctx.fill();
             const pausedArt64 = canvas.toDataURL('image/png');
 			
             window.cacheManager?.set('pausedArtwork64', pausedArt64);
