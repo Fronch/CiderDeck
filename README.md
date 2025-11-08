@@ -43,6 +43,6 @@ Other changes:
 
 ## Installation Guide
 
-Go into the [Releases]([https://github.com/ciderapp/CiderDeck/releases](https://github.com/Fronch/CiderDeck/releases/tag/v3.2.0-Fronch-1)) and download the latest compiled plugin file, double click to open it in the Stream Deck software for installation.
+Go into the [Releases](https://github.com/Fronch/CiderDeck/releases/tag/v3.2.0-Fronch-1) and download the latest compiled plugin file, double click to open it in the Stream Deck software for installation.
 
 Done!
